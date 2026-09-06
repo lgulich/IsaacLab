@@ -105,6 +105,16 @@ def test_vbd_excludes_registered_deformable_meshes(monkeypatch, env_paths):
         def __init__(self):
             self.imports = []
             self.color_calls = 0
+            for label_type in (
+                "body",
+                "joint",
+                "shape",
+                "articulation",
+                "constraint_mimic",
+            ):
+                setattr(self, f"{label_type}_label", [])
+                setattr(self, f"{label_type}_world", [])
+            self.custom_attributes = {}
 
         def add_usd(self, stage, *, root_path=None, ignore_paths=(), schema_resolvers=()):
             self.imports.append((root_path, list(ignore_paths)))
@@ -145,6 +155,10 @@ def test_vbd_excludes_registered_deformable_meshes(monkeypatch, env_paths):
 
     def replicate(*args, **kwargs):
         replicate_calls.append(kwargs)
+        builder, sources = args[:2]
+        for world in range(len(env_paths)):
+            builder.body_label.append(f"{sources[0]}/Robot")
+            builder.body_world.append(world)
         return {}, [object() for _ in env_paths]
 
     monkeypatch.setattr(newton_module, "get_current_stage", lambda: stage)
@@ -178,6 +192,7 @@ def test_vbd_excludes_registered_deformable_meshes(monkeypatch, env_paths):
     )
     monkeypatch.setattr(physics.NewtonVBDManager, "_builder", None)
     monkeypatch.setattr(NewtonManager, "_cl_site_index_map", {})
+    monkeypatch.setattr(NewtonManager, "_cl_fabric_body_bindings", None)
     monkeypatch.setattr(NewtonManager, "_world_xforms", [])
     monkeypatch.setattr(NewtonManager, "_num_envs", 0)
 
@@ -189,6 +204,10 @@ def test_vbd_excludes_registered_deformable_meshes(monkeypatch, env_paths):
         assert builders[1].imports == [(env_paths[0], deformable_paths)]
         assert replicate_calls[0]["per_world_builder_hooks"] == [hook]
         assert NewtonManager._num_envs == len(env_paths)
+        assert builders[0].body_label == [f"{path}/Robot" for path in env_paths]
+        assert dict(NewtonManager._cl_fabric_body_bindings) == {
+            f"{path}/Robot": world for world, path in enumerate(env_paths)
+        }
     else:
         assert builders[0].imports == [(None, ["/World/terrain", *deformable_paths])]
         assert hook_calls == [0]

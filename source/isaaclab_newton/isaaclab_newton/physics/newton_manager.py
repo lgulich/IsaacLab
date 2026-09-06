@@ -98,6 +98,7 @@ from isaaclab.utils.warp.index_kernel import IndexKernelDispatcher
 
 from isaaclab_newton.cloner.newton_clone_utils import (
     _restore_visible_colliders_without_visual_shapes,
+    rename_builder_labels,
     replicate_builder_mapping,
 )
 from isaaclab_newton.physics.featherstone_manager_cfg import FeatherstoneSolverCfg
@@ -1879,6 +1880,16 @@ class NewtonManager(PhysicsManager):
                 source_site_indices=source_site_indices,
                 env_root_sites=env_root_sites,
                 per_world_builder_hooks=cls._per_world_builder_hooks,
+            )
+            proto_env_id = env_paths[0][0]
+            destination_template = proto_path[: -len(str(proto_env_id))] + "{}"
+            env_ids = torch.tensor([env_id for env_id, _ in env_paths], dtype=torch.int32)
+            NewtonManager._cl_fabric_body_bindings = rename_builder_labels(
+                builder,
+                (proto_path,),
+                (destination_template,),
+                env_ids,
+                mapping,
             )
 
             NewtonManager._cl_site_index_map = {label: (idx, None) for label, idx in global_site_indices.items()}
