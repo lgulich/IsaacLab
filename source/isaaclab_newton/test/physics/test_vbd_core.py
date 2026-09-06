@@ -87,7 +87,11 @@ def test_soft_contact_cfg_updates_finalized_model(monkeypatch, soft_contact_cfg,
     assert state_values == [expected, expected]
 
 
-@pytest.mark.parametrize("env_paths", [(), ("/World/Env_0", "/World/Env_1")], ids=["flat", "replicated"])
+@pytest.mark.parametrize(
+    "env_paths",
+    [(), ("/World/Env_0", "/World/Env_1"), ("/World/envs/env_0", "/World/envs/env_1")],
+    ids=["flat", "direct_envs", "nested_envs"],
+)
 def test_vbd_excludes_registered_deformable_meshes(monkeypatch, env_paths):
     """VBD excludes registered simulation and visual meshes from USD import."""
     physics = importlib.import_module("isaaclab_newton.physics")
@@ -109,15 +113,24 @@ def test_vbd_excludes_registered_deformable_meshes(monkeypatch, env_paths):
         def color(self):
             self.color_calls += 1
 
-    children = [
-        SimpleNamespace(
-            GetName=lambda path=path: path.rsplit("/", 1)[-1],
-            GetPath=lambda path=path: SimpleNamespace(pathString=path),
+    def make_prim(path, children=()):
+        return SimpleNamespace(
+            IsValid=lambda: True,
+            GetChildren=lambda: children,
+            GetName=lambda: path.rsplit("/", 1)[-1],
+            GetPath=lambda: SimpleNamespace(pathString=path),
         )
-        for path in env_paths
-    ]
-    world_prim = SimpleNamespace(IsValid=lambda: True, GetChildren=lambda: children)
-    stage = SimpleNamespace(GetPrimAtPath=lambda path: world_prim if path == "/World" else path)
+
+    env_prims = [make_prim(path) for path in env_paths]
+    if env_paths and env_paths[0].startswith("/World/envs/"):
+        envs_prim = make_prim("/World/envs", env_prims)
+        world_children = [envs_prim]
+    else:
+        envs_prim = None
+        world_children = env_prims
+    world_prim = make_prim("/World", world_children)
+    prims = {"/World": world_prim, "/World/envs": envs_prim}
+    stage = SimpleNamespace(GetPrimAtPath=lambda path: prims.get(path, path))
     rotation = SimpleNamespace(GetImaginary=lambda: (0.0, 0.0, 0.0), GetReal=lambda: 1.0)
     matrix = SimpleNamespace(ExtractTranslation=lambda: (0.0, 0.0, 0.0), ExtractRotationQuat=lambda: rotation)
     usd_geom = SimpleNamespace(
@@ -173,8 +186,9 @@ def test_vbd_excludes_registered_deformable_meshes(monkeypatch, env_paths):
     deformable_paths = ["/World/soft/sim", "/World/soft/visual"]
     if env_paths:
         assert builders[0].imports == [(None, [*env_paths, "/World/terrain", *deformable_paths])]
-        assert builders[1].imports == [("/World/Env_0", deformable_paths)]
+        assert builders[1].imports == [(env_paths[0], deformable_paths)]
         assert replicate_calls[0]["per_world_builder_hooks"] == [hook]
+        assert NewtonManager._num_envs == len(env_paths)
     else:
         assert builders[0].imports == [(None, ["/World/terrain", *deformable_paths])]
         assert hook_calls == [0]

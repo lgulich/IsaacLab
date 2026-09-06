@@ -1774,9 +1774,10 @@ class NewtonManager(PhysicsManager):
     def instantiate_builder_from_stage(cls):
         """Create builder from USD stage.
 
-        Detects env Xforms (e.g. ``/World/Env_0``, ``/World/Env_1``) and builds
-        each as a separate Newton world via ``begin_world``/``end_world``.
-        Falls back to a flat ``add_usd`` when no env Xforms are found.
+        Detects env Xforms directly below ``/World`` or below the standard
+        ``/World/envs`` namespace and builds each as a separate Newton world
+        via ``begin_world``/``end_world``. Falls back to a flat ``add_usd``
+        when no env Xforms are found.
 
         """
         import re
@@ -1786,7 +1787,8 @@ class NewtonManager(PhysicsManager):
         stage = get_current_stage()
         up_axis = UsdGeom.GetStageUpAxis(stage)
 
-        # Scan /World children for env-like Xforms (Env_0, env_1, ...)
+        # Scan direct children first to preserve the original /World/Env_N behavior.
+        # Isaac Lab scenes conventionally nest their environments under /World/envs.
         env_pattern = re.compile(r"^[Ee]nv_(\d+)$")
         world_prim = stage.GetPrimAtPath("/World")
         env_paths: list[tuple[int, str]] = []
@@ -1795,6 +1797,13 @@ class NewtonManager(PhysicsManager):
                 m = env_pattern.match(child.GetName())
                 if m:
                     env_paths.append((int(m.group(1)), child.GetPath().pathString))
+        if not env_paths:
+            envs_prim = stage.GetPrimAtPath("/World/envs")
+            if envs_prim and envs_prim.IsValid():
+                for child in envs_prim.GetChildren():
+                    m = env_pattern.match(child.GetName())
+                    if m:
+                        env_paths.append((int(m.group(1)), child.GetPath().pathString))
         env_paths.sort(key=lambda x: x[0])
 
         builder = cls.create_builder(up_axis=up_axis)
