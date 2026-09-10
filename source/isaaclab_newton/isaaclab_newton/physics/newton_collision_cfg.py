@@ -115,6 +115,14 @@ class NewtonCollisionPipelineCfg:
     Defaults to ``True`` (same as Newton's default).
     """
 
+    contact_matching: Literal["disabled", "latest", "sticky"] = "disabled"
+    """How contacts are matched to the previous collision frame.
+
+    ``"latest"`` follows the newest matching contact, which is useful for
+    rolling and meshing geometry whose active feature changes every step.
+    Defaults to ``"disabled"`` (same as Newton's default).
+    """
+
     rigid_contact_max: int | None = None
     """Maximum number of rigid contacts to allocate.
 

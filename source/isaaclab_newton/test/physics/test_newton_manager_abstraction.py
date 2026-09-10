@@ -64,6 +64,17 @@ from isaaclab.sim import SimulationCfg, build_simulation_context
 # Lightweight (no sim) parametrisation
 # ---------------------------------------------------------------------------
 
+
+def test_mjwarp_and_collision_configs_expose_contact_manifold_controls():
+    solver_cfg = MJWarpSolverCfg(enable_multiccd=True)
+    collision_cfg = NewtonCollisionPipelineCfg(contact_matching="latest", reduce_contacts=False)
+
+    solver_kwargs = NewtonMJWarpManager._filter_solver_kwargs(SolverMuJoCo, solver_cfg)
+    assert solver_kwargs["enable_multiccd"] is True
+    assert collision_cfg.to_pipeline_args()["contact_matching"] == "latest"
+    assert collision_cfg.to_pipeline_args()["reduce_contacts"] is False
+
+
 # (solver_cfg_factory, expected_manager, expected_solver_cls,
 #  expected_use_single_state, expected_needs_collision_pipeline)
 SOLVER_MATRIX = [

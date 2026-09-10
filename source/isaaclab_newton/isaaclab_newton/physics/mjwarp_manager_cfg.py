@@ -119,6 +119,14 @@ class MJWarpSolverCfg(NewtonSolverCfg):
         :class:`ValueError` because the two collision modes are mutually exclusive.
     """
 
+    enable_multiccd: bool = False
+    """Whether MuJoCo generates multi-point manifolds for convex mesh pairs.
+
+    This option is used only when :attr:`use_mujoco_contacts` is ``True``.
+    Newton's external collision pipeline controls contact preservation through
+    :attr:`NewtonCollisionPipelineCfg.reduce_contacts` instead.
+    """
+
     tolerance: float = 1e-6
     """Solver convergence tolerance for the constraint residual.
 
