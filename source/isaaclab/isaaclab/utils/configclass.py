@@ -355,6 +355,12 @@ def _validate(obj: object, prefix: str = "") -> list[str]:
     """
     missing_fields = []
 
+    # Config classes frequently store implementation classes in ``class_type`` fields. Treat
+    # those values as leaves: class dictionaries may contain arbitrary process-global runtime
+    # state, including cycles, and are not part of the declarative configuration being checked.
+    if isinstance(obj, type):
+        return missing_fields
+
     if type(obj).__name__ == "MeshConverterCfg":
         return missing_fields
 

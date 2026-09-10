@@ -1079,6 +1079,21 @@ def test_config_with_class_type():
     assert cfg.b == "dummy"
 
 
+def test_validation_treats_class_values_as_atomic():
+    """Class-valued config fields may own cyclic process-global runtime state."""
+
+    class RuntimeOwner:
+        pass
+
+    RuntimeOwner.cache = {"owner": RuntimeOwner}
+
+    @configclass
+    class RuntimeCfg:
+        class_type: type = RuntimeOwner
+
+    RuntimeCfg().validate()
+
+
 def test_nested_config_class_declarations():
     """Tests that configclass works properly with nested class class declarations."""
 
