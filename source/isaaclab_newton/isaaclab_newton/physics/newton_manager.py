@@ -1932,7 +1932,7 @@ class NewtonManager(PhysicsManager):
             if _solver is not None and hasattr(_solver, "get_max_contact_count"):
                 _need = _solver.get_max_contact_count()
                 if _need > NewtonManager._contacts.rigid_contact_max:
-                    if cls._deterministic_mode != wp.DeterministicMode.NOT_GUARANTEED:
+                    if cls._collision_pipeline.deterministic:
                         # In deterministic mode, CollisionPipeline sizes _sort_key_array from rigid_contact_max at
                         # construction. Rebuild so the sort and contact buffers retain matching capacity; replacing
                         # Contacts alone would leave the sorting buffer undersized.
