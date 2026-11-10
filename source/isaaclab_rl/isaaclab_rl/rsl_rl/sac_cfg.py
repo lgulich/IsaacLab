@@ -120,6 +120,16 @@ class RslRlSacAlgorithmCfg:
     use_cuda_graph: bool = False
     """Whether to capture update steps with CUDA graphs; independent of torch_compile_mode."""
 
+    grad_reduce_bucket_mb: float = 25
+    """Maximum gradient-reduction buffer size in megabytes for multi-GPU training."""
+
+    validate_final_obs: bool | None = None
+    """Whether SAC rejects nonfinite final observations before updates.
+
+    None lets RSL-RL decide: off on a single GPU when the runner's ``check_for_nan`` already covers final
+    observations, on otherwise.
+    """
+
 
 @configclass
 class RslRlSacRunnerCfg(RslRlBaseRunnerCfg):
